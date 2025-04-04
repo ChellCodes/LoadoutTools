@@ -1,0 +1,18 @@
+EXPORTS
+GetFileVersionInfoA=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoA @1
+;GetFileVersionInfoByHandle=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoByHandle @2
+;GetFileVersionInfoExA=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoExA @3
+GetFileVersionInfoExW=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoExW @4
+GetFileVersionInfoSizeA=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoSizeA @5
+;GetFileVersionInfoSizeExA=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoSizeExA @6
+GetFileVersionInfoSizeExW=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoSizeExW @7
+GetFileVersionInfoSizeW=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoSizeW @8
+GetFileVersionInfoW=C:\Windows\SysWOW64\version.dll.GetFileVersionInfoW @9
+VerFindFileA=C:\Windows\SysWOW64\version.dll.VerFindFileA @10
+VerFindFileW=C:\Windows\SysWOW64\version.dll.VerFindFileW @11
+VerInstallFileA=C:\Windows\SysWOW64\version.dll.VerInstallFileA @12
+VerInstallFileW=C:\Windows\SysWOW64\version.dll.VerInstallFileW @13
+VerLanguageNameA=C:\Windows\SysWOW64\version.dll.VerLanguageNameA @14
+VerLanguageNameW=C:\Windows\SysWOW64\version.dll.VerLanguageNameW @15
+VerQueryValueA=C:\Windows\SysWOW64\version.dll.VerQueryValueA @16
+VerQueryValueW=C:\Windows\SysWOW64\version.dll.VerQueryValueW @17
