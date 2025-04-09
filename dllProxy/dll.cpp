@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <stdio.h>
+#include "modloader.c"
 #include "kernelBaseHooks.c"
 #include "mempatch.c"
 
@@ -15,6 +16,7 @@ void myCode() {
 	Sleep(50);
 	printf("Wello Horld~\n");
 	HMODULE kernelBase = GetModuleHandleA("kernelbase.dll");
+	ModInit();
 
 	tCreateFileA orgCreateFileA = (tCreateFileA)GetProcAddress(kernelBase, "CreateFileA");
 	gwCreateFileA = (tCreateFileA)TrampolineHook((BYTE*)orgCreateFileA, (BYTE*)myCreateFileA, 5);
@@ -25,20 +27,18 @@ void myCode() {
 	}
 
 	HMODULE graphics = NULL;
-	while (1) {
-		if (!graphics) {
-			graphics = GetModuleHandleA("d3d11.dll");
-			if (graphics != NULL) {
-				printf("d3d11 Addr: %p\n", graphics);
-				FARPROC createDevicePtr = GetProcAddress(graphics, "D3D11CreateDeviceAndSwapChain");
-				printf("D3D11CreateDeviceAndSwapChain Addr: %p\n", createDevicePtr);
+	while (!graphics) {
+		graphics = GetModuleHandleA("d3d11.dll");
+		if (graphics != NULL) {
+			printf("d3d11 Addr: %p\n", graphics);
+			FARPROC createDevicePtr = GetProcAddress(graphics, "D3D11CreateDeviceAndSwapChain");
+			printf("D3D11CreateDeviceAndSwapChain Addr: %p\n", createDevicePtr);
 
-				printf("myPresnent %p\n", myPresent);
-				// tPresent orgPresent = getPresentProcAddr(myPresent);
-				gwPresent = getPresentProcAddr(myPresent);
-				printf("Got Present: %p\n", gwPresent);
-				// gwPresent = (tPresent)TrampolineHook((BYTE*)orgPresent+5, (BYTE*)myPresent, 6);
-			}
+			printf("myPresnent %p\n", myPresent);
+			// tPresent orgPresent = getPresentProcAddr(myPresent);
+			gwPresent = getPresentProcAddr(myPresent);
+			printf("Got Present: %p\n", gwPresent);
+			// gwPresent = (tPresent)TrampolineHook((BYTE*)orgPresent+5, (BYTE*)myPresent, 6);
 		}
 		Sleep(25);
 	}
