@@ -1,14 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"os"
 	"strings"
 )
 
-type arcFile struct {
+type indFiles []indFile
+
+type indFile struct {
 	index uint32
 	magic []byte
 	//empty int64
@@ -26,6 +27,26 @@ type asset struct {
 	DataLen uint64
 }
 
+func (i indFiles) toBytes() []byte {
+	outData := []byte{0xD5, 0x11, 0x0D, 0x60, 0xEB, 0xC7, 0x3A, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00}
+	for _, file := range i {
+		outData = binary.LittleEndian.AppendUint32(outData, file.index)
+		outData = append(outData, file.magic...)
+		outData = binary.LittleEndian.AppendUint64(outData, 0)
+		outData = binary.LittleEndian.AppendUint32(outData, file.fileNameLen)
+		outData = append(outData, []byte(file.fileName)...)
+		outData = binary.LittleEndian.AppendUint32(outData, file.unknown0)
+		outData = binary.LittleEndian.AppendUint32(outData, file.unknown1)
+		outData = binary.LittleEndian.AppendUint32(outData, file.OffsetCount)
+		outData = append(outData, file.DataBlock...)
+		for _, a := range file.Assets {
+			outData = binary.LittleEndian.AppendUint32(outData, a.Offset)
+			outData = binary.LittleEndian.AppendUint64(outData, a.DataLen)
+		}
+	}
+	return outData
+}
+
 func clen(n []byte) int {
 	for i := 0; i < len(n); i++ {
 		if n[i] == 0 {
@@ -34,6 +55,8 @@ func clen(n []byte) int {
 	}
 	return len(n)
 }
+
+var files = indFiles{}
 
 func main() {
 	fmt.Println("Wello Horld!")
@@ -44,7 +67,6 @@ func main() {
 	numberOfFiles := binary.LittleEndian.Uint32(file[0x10:0x14])
 	fmt.Printf("Num of files: %d\n", numberOfFiles)
 
-	files := []arcFile{}
 	offset := 0x14
 	for i := range numberOfFiles {
 		data, n := getArcData(file[offset:])
@@ -61,33 +83,14 @@ func main() {
 	fmt.Printf("Selected: %s OffsetCount: %d\n", selected.fileName, selected.OffsetCount)
 
 	dataFile, _ := os.ReadFile(loPath + files[index].fileName)
-	for i := range selected.OffsetCount {
-		selectedAsset := selected.Assets[i]
-		ind := clen(dataFile[selectedAsset.Offset:selectedAsset.Offset+uint32(selectedAsset.DataLen)]) + 1
 
-		width := binary.LittleEndian.Uint32(dataFile[selectedAsset.Offset+uint32(ind) : selectedAsset.Offset+uint32(ind)+0x4])
-		height := binary.LittleEndian.Uint32(dataFile[selectedAsset.Offset+uint32(ind)+0x4 : selectedAsset.Offset+uint32(ind)+0x8])
-		// mipmapCount := binary.LittleEndian.Uint32(dataFile[selectedAsset.Offset+uint32(ind)+0xc : selectedAsset.Offset+uint32(ind)+0x10])
-		// return
-		if width == 1024 && height == 1024 {
-			// fmt.Printf("%4d %5d %5d %3d \n", i, width, height, mipmapCount)
-			outName := fmt.Sprintf("out\\%s-%d-0x%x.dds", strings.Split(selected.fileName, ".")[0], i, selectedAsset.Offset)
-			fi, _ := os.Create(outName)
-			texture := dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)]
-			_, a, _ := bytes.Cut(texture, []byte{'D', 'D', 'S'})
-			fi.Write(append([]byte{'D', 'D', 'S'}, a...))
-			fmt.Printf("Wrote File: %s\n", outName)
-		}
-	}
-
-	return
 	offsetIndex := getUserInt("Select Offset: ")
 	selectedAsset := selected.Assets[offsetIndex]
 	fmt.Printf("Offset into %s: 0x%x Len: 0x%x\n", selected.fileName, selectedAsset.Offset, selectedAsset.DataLen)
 
 	mode := getUserInt("Patch or Dump (1 or 2): ")
 	if mode == 1 {
-		fmt.Println("TBI")
+		patch(dataFile, selectedAsset, index, offsetIndex)
 	}
 
 	if mode == 2 {
@@ -96,6 +99,45 @@ func main() {
 		fi.Write(dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)])
 		fmt.Printf("Wrote File: %s\n", outName)
 	}
+}
+
+// Patch ARC
+// Recalc Ind offsets
+
+func patch(arcF []byte, sel asset, fileIndex, assetIndex int) {
+	var filePath string
+
+	fmt.Print("File to replace with: ")
+	fmt.Scan(&filePath)
+	patchData, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+
+	outArc := append(arcF[:sel.Offset], patchData...)
+	outArc = append(outArc, arcF[sel.Offset+uint32(sel.DataLen):]...)
+	outFile, _ := os.Create(files[fileIndex].fileName)
+	outFile.Write(outArc)
+	fmt.Println("Wrote ARC File!")
+
+	outIndFile, _ := os.Create("index.ind")
+
+	offsetAdjust := len(patchData) - int(sel.DataLen)
+	fmt.Printf("len of new data = 0x%x\nOffest Adjustment = 0x%x\n", len(patchData), offsetAdjust)
+	for index := range files[fileIndex].Assets {
+		if index < assetIndex {
+			continue
+		}
+		if index == assetIndex {
+			files[fileIndex].Assets[index].DataLen = uint64(len(patchData))
+			continue
+		}
+		files[fileIndex].Assets[index].Offset += uint32(offsetAdjust)
+	}
+
+	outIndFile.Write(files.toBytes())
+	fmt.Println("Wrote ind File!")
 }
 
 func getUserInt(printMsg string) int {
@@ -110,8 +152,8 @@ func getUserInt(printMsg string) int {
 	return userInt
 }
 
-func getArcData(data []byte) (arcData arcFile, n uint32) {
-	var out arcFile
+func getArcData(data []byte) (arcData indFile, n uint32) {
+	var out indFile
 	out.index = binary.LittleEndian.Uint32(data[:0x04])
 	out.magic = data[0x04:0x0C]
 	out.fileNameLen = binary.LittleEndian.Uint32(data[0x14:0x18])
@@ -135,4 +177,26 @@ func getArcData(data []byte) (arcData arcFile, n uint32) {
 	}
 
 	return out, offset
+}
+
+func images() {
+	/*
+		for i := range selected.OffsetCount {
+			selectedAsset := selected.Assets[i]
+			ind := clen(dataFile[selectedAsset.Offset:selectedAsset.Offset+uint32(selectedAsset.DataLen)]) + 1
+
+			width := binary.LittleEndian.Uint32(dataFile[selectedAsset.Offset+uint32(ind) : selectedAsset.Offset+uint32(ind)+0x4])
+			height := binary.LittleEndian.Uint32(dataFile[selectedAsset.Offset+uint32(ind)+0x4 : selectedAsset.Offset+uint32(ind)+0x8])
+			// mipmapCount := binary.LittleEndian.Uint32(dataFile[selectedAsset.Offset+uint32(ind)+0xc : selectedAsset.Offset+uint32(ind)+0x10])
+			// return
+			if width == 1024 && height == 1024 {
+				// fmt.Printf("%4d %5d %5d %3d \n", i, width, height, mipmapCount)
+				outName := fmt.Sprintf("out\\%s-%d-0x%x.dds", strings.Split(selected.fileName, ".")[0], i, selectedAsset.Offset)
+				fi, _ := os.Create(outName)
+				texture := dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)]
+				_, a, _ := bytes.Cut(texture, []byte{'D', 'D', 'S'})
+				fi.Write(append([]byte{'D', 'D', 'S'}, a...))
+				fmt.Printf("Wrote File: %s\n", outName)
+			}
+		}*/
 }
