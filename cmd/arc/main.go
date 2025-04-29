@@ -107,7 +107,7 @@ func main() {
 			selectedAsset := selected.Assets[i]
 			outName := fmt.Sprintf("out/%s-%d-0x%x", strings.Split(selected.fileName, ".")[0], i, selectedAsset.Offset)
 
-			if reflect.DeepEqual(dataFile[:4], []byte{'T', 'X', 'F', 'L'}) {
+			if reflect.DeepEqual(dataFile[selectedAsset.Offset:selectedAsset.Offset+4], []byte{'T', 'X', 'F', 'L'}) {
 				outName += ".dds"
 				outFile, _ := os.Create(outName)
 
@@ -117,7 +117,7 @@ func main() {
 					continue
 				}
 				outFile.Write(append([]byte{'D', 'D', 'S'}, a...))
-			} else if reflect.DeepEqual(dataFile[:4], []byte{'D', 'D', 'S', ' '}) {
+			} else if reflect.DeepEqual(dataFile[selectedAsset.Offset:selectedAsset.Offset+4], []byte{'D', 'D', 'S', ' '}) {
 				outName += ".dds"
 				outFile, _ := os.Create(outName)
 				outFile.Write(dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)])
