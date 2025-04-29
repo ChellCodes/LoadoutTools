@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 )
@@ -50,7 +51,22 @@ func encrypt(file, out []byte) {
 }
 
 func main() {
-	file, err := os.ReadFile("in.dds")
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "Flags:")
+		flag.PrintDefaults()
+	}
+
+	boolEncrypt := flag.Bool("encrypt", false, "Set to encrypt file, otherwise it'll decrypt")
+	inFileName := flag.String("input", "", "[Required] File name for input")
+	outFileName := flag.String("out", "", "File name for dest, empty will replace input file")
+	flag.Parse()
+
+	if *inFileName == "" {
+		flag.Usage()
+		return
+	}
+
+	file, err := os.ReadFile(*inFileName)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -61,10 +77,18 @@ func main() {
 	for x := 0; x < 0x80; x++ {
 		out[x] = file[x]
 	}
-	decrypt(file, out)
-	// encrypt(file, out)
-	f, _ := os.Create("out.dds")
+
+	if *boolEncrypt {
+		encrypt(file, out)
+	} else {
+		decrypt(file, out)
+	}
+
+	if *outFileName == "" {
+		outFileName = inFileName
+	}
+	f, _ := os.Create(*outFileName)
 	f.Write(out)
 
-	fmt.Println("Finished")
+	fmt.Println("Finished " + *outFileName)
 }
