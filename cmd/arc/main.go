@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -61,14 +62,19 @@ var files = indFiles{}
 func main() {
 	fmt.Println("Wello Horld!")
 
-	loPath := "N:/SteamLibrary/steamapps/common/Loadout/Data/"
-	file, _ := os.ReadFile(loPath + "index.ind")
+	loPath := "C:/Program Files (x86)/Steam/steamapps/common/Loadout/Data/"
+	file, err := os.ReadFile(loPath + "index.ind")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	numberOfFiles := binary.LittleEndian.Uint32(file[0x10:0x14])
 	fmt.Printf("Num of files: %d\n", numberOfFiles)
 
 	offset := 0x14
-	for i := range numberOfFiles {
+	//for i := range numberOfFiles {
+	for i := 0; i < int(numberOfFiles); i++ {
 		data, n := getArcData(file[offset:])
 		offset += int(n)
 		files = append(files, data)
@@ -85,6 +91,23 @@ func main() {
 	dataFile, _ := os.ReadFile(loPath + files[index].fileName)
 
 	offsetIndex := getUserInt("Select Offset: ")
+	if offsetIndex == -1 {
+		for i := uint32(0); i < selected.OffsetCount; i++ {
+			selectedAsset := selected.Assets[i]
+			outName := fmt.Sprintf("out/%s-%d-0x%x.dds", strings.Split(selected.fileName, ".")[0], i, selectedAsset.Offset)
+			texture := dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)]
+			_, a, _ := bytes.Cut(texture, []byte{'D', 'D', 'S'})
+			if a[0x54-0x3] != 0 {
+				continue
+			}
+			fi, _ := os.Create(outName)
+			fi.Write(append([]byte{'D', 'D', 'S'}, a...))
+			fi.Write(dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)])
+			fmt.Printf("Wrote File: %s\n", outName)
+		}
+		return
+	}
+
 	selectedAsset := selected.Assets[offsetIndex]
 	fmt.Printf("Offset into %s: 0x%x Len: 0x%x\n", selected.fileName, selectedAsset.Offset, selectedAsset.DataLen)
 
