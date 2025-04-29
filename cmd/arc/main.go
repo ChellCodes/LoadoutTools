@@ -113,9 +113,7 @@ func main() {
 
 				texture := dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)]
 				_, a, _ := bytes.Cut(texture, []byte{'D', 'D', 'S'})
-				if a[0x54-0x3] != 0 {
-					continue
-				}
+
 				outFile.Write(append([]byte{'D', 'D', 'S'}, a...))
 			} else if reflect.DeepEqual(dataFile[selectedAsset.Offset:selectedAsset.Offset+4], []byte{'D', 'D', 'S', ' '}) {
 				outName += ".dds"
