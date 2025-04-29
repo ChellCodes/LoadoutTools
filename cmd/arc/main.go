@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"flag"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 )
 
@@ -62,8 +64,14 @@ var files = indFiles{}
 func main() {
 	fmt.Println("Wello Horld!")
 
-	loPath := "C:/Program Files (x86)/Steam/steamapps/common/Loadout/Data/"
-	file, err := os.ReadFile(loPath + "index.ind")
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "Flags:")
+		flag.PrintDefaults()
+	}
+	loPath := flag.String("loadoutDir", "C:/Program Files (x86)/Steam/steamapps/common/Loadout/Data/", "Folder Path to Loadout Data dir")
+	flag.Parse()
+
+	file, err := os.ReadFile(*loPath + "index.ind")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -73,8 +81,7 @@ func main() {
 	fmt.Printf("Num of files: %d\n", numberOfFiles)
 
 	offset := 0x14
-	//for i := range numberOfFiles {
-	for i := 0; i < int(numberOfFiles); i++ {
+	for i := range numberOfFiles {
 		data, n := getArcData(file[offset:])
 		offset += int(n)
 		files = append(files, data)
@@ -88,21 +95,37 @@ func main() {
 	selected := files[index]
 	fmt.Printf("Selected: %s OffsetCount: %d\n", selected.fileName, selected.OffsetCount)
 
-	dataFile, _ := os.ReadFile(loPath + files[index].fileName)
+	dataFile, err := os.ReadFile(*loPath + files[index].fileName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	offsetIndex := getUserInt("Select Offset: ")
+	offsetIndex := getUserInt("Select Offset (-1 to dump all): ")
 	if offsetIndex == -1 {
 		for i := uint32(0); i < selected.OffsetCount; i++ {
 			selectedAsset := selected.Assets[i]
-			outName := fmt.Sprintf("out/%s-%d-0x%x.dds", strings.Split(selected.fileName, ".")[0], i, selectedAsset.Offset)
-			texture := dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)]
-			_, a, _ := bytes.Cut(texture, []byte{'D', 'D', 'S'})
-			if a[0x54-0x3] != 0 {
-				continue
+			outName := fmt.Sprintf("out/%s-%d-0x%x", strings.Split(selected.fileName, ".")[0], i, selectedAsset.Offset)
+
+			if reflect.DeepEqual(dataFile[:4], []byte{'T', 'X', 'F', 'L'}) {
+				outName += ".dds"
+				outFile, _ := os.Create(outName)
+
+				texture := dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)]
+				_, a, _ := bytes.Cut(texture, []byte{'D', 'D', 'S'})
+				if a[0x54-0x3] != 0 {
+					continue
+				}
+				outFile.Write(append([]byte{'D', 'D', 'S'}, a...))
+			} else if reflect.DeepEqual(dataFile[:4], []byte{'D', 'D', 'S', ' '}) {
+				outName += ".dds"
+				outFile, _ := os.Create(outName)
+				outFile.Write(dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)])
+			} else {
+				outName += ".bin"
+				outFile, _ := os.Create(outName)
+				outFile.Write(dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)])
 			}
-			fi, _ := os.Create(outName)
-			fi.Write(append([]byte{'D', 'D', 'S'}, a...))
-			fi.Write(dataFile[selectedAsset.Offset : selectedAsset.Offset+uint32(selectedAsset.DataLen)])
 			fmt.Printf("Wrote File: %s\n", outName)
 		}
 		return
