@@ -18,72 +18,58 @@ var xor2 = []byte{
 func decrypt0x10(file, out []byte) error {
 	size := len(file) - 0x80
 	lent := 0x1000
-	writen := 0
 	offset := 0x0
 	for size > 0 {
-		// Not accruate
 		if size < 0x1000 {
 			lent = size
 		}
 		stride := (lent / 0x10)
 
-		fmt.Printf("FileSize:%x Stride:%x\n", size, stride)
+		// fmt.Printf("FileSize:%x Stride:%x\n", size, stride)
 		buf := []byte{}
-		if stride&0xf == 0 {
-			fmt.Println("TBI")
-			break
-
-			// for j := range 0x10 {
-			// 	for range stride {
-			// 	}
-			// }
-		} else {
-			iz := 0
-			for j := range 0x10 {
-				for range stride {
-					// this+0x4 = inBuf ^ EA
-					index := file[(iz)+0x80]
-					key := xor2[j%0x10]
-					buf = append(buf, index^key)
-					iz++
-				}
+		// if stride&0xf == 0 {
+		// 	iz := 0
+		// 	for j := range 0x10 {
+		// 		for range stride {
+		// 			index := file[(iz)+offset+0x80]
+		// 			key := xor2[j%0x10]
+		// 			buf = append(buf, index^key)
+		// 			iz++
+		// 		}
+		// 	}
+		// } else {
+		// }
+		iz := 0
+		for j := range 0x10 {
+			for range stride {
+				index := file[(iz)+offset+0x80]
+				key := xor2[j%0x10]
+				buf = append(buf, index^key)
+				iz++
 			}
 		}
-
-		for i, x := range buf {
-			if i%0x10 == 0 {
-				fmt.Printf("\n%.3X - ", i)
-			} else if i%4 == 0 {
-				fmt.Print("| ")
-			}
-			fmt.Printf("\033[9%dm%.2X \033[0m", (i%stride)%0x8, x)
-		}
-		fmt.Println()
+		//
+		// for i, x := range buf {
+		// 	if i%0x10 == 0 {
+		// 		fmt.Printf("\n%.3X - ", i)
+		// 	} else if i%4 == 0 {
+		// 		fmt.Print("| ")
+		// 	}
+		// 	fmt.Printf("\033[9%dm%.2X \033[0m", (i%stride)%0x8, x)
+		// }
+		// fmt.Println()
 
 		for i := 0x0; i < stride; i++ {
-			// index := i * 4
 			for j := 0; j < 0x10; j++ {
-				// index := j * (stride * 2)
-				// fmt.Printf("%x\n", index)
 				out[(i+j)+offset+0x80] = buf[i+(j*stride)]
-				writen++
 			}
 			offset += 15
-			// out[(index+1)+offset+0x80] = buf[i+1+offset+0x80]
 		}
-		offset += lent
+		offset += stride
 		size -= lent
 	}
 
-	for i, x := range out[0x80 : writen+0x80] {
-		if i%0x10 == 0 {
-			fmt.Println()
-		}
-		fmt.Printf("%.2x ", x)
-	}
-	fmt.Println()
 	return nil
-	// return fmt.Errorf("testing")
 }
 
 func main() {
