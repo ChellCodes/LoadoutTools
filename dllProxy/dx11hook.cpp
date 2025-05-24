@@ -33,7 +33,7 @@ ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 bool init = false;
 bool showMenu = true;
-bool showDemoMenu = true;
+bool showDemoMenu = false;
 HRESULT __stdcall myPresent(IDXGISwapChain *thisptr, UINT sync, UINT flags) {
   if (!init) {
     DXGI_SWAP_CHAIN_DESC sd;
@@ -93,26 +93,29 @@ HRESULT __stdcall myPresent(IDXGISwapChain *thisptr, UINT sync, UINT flags) {
 
   if (showMenu){
     ImGui::Begin("LoadoutTools", &showMenu, ImGuiWindowFlags_NoCollapse);
-    if (ImGui::CollapsingHeader("Endpoints", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::Button("Patch Endpoints")) {
+        strncpy(UberentAddress, "api.loadout.rip", 15 * sizeof(char));
+        strncpy(UesAddress, "api.loadout.rip", 15 * sizeof(char));
+        strncpy(MatchmakingAddress, "api.loadout.rip", 15 * sizeof(char));
+    }
+    if (ImGui::CollapsingHeader("Endpoints")) {
       // ImGui::PushStyleVar(Imgui)
       ImGui::Indent();
       ImGui::Text("%s: %p", UberentAddress, (void *)UberentAddress);
-      ImGui::SameLine();
-      if (ImGui::Button("Patch!###1")) {
-        strncpy(UberentAddress, "api.loadout.rip", 15 * sizeof(char));
-      }
       ImGui::Text("%s: %p", UesAddress, (void *)UesAddress);
-      ImGui::SameLine();
-      if (ImGui::Button("Patch!###2")) {
-        strncpy(UesAddress, "api.loadout.rip", 15 * sizeof(char));
-      }
       ImGui::Text("%s: %p", MatchmakingAddress, (void *)MatchmakingAddress);
-      ImGui::SameLine();
-      if (ImGui::Button("Patch!###3")) {
-        strncpy(MatchmakingAddress, "api.loadout.rip", 15 * sizeof(char));
-      }
       ImGui::Unindent();
     }
+    if (ImGui::CollapsingHeader("Mods", ImGuiTreeNodeFlags_DefaultOpen)) {
+      if (filesCount > 0) {
+      ImGui::Indent();
+        for (int i=0; i <= filesCount; i++) {
+          ImGui::Text(modFiles[i]);
+        }
+      ImGui::Unindent();
+      }
+    }
+
     ImGui::End();
   }
   ImGui::EndFrame();
