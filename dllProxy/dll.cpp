@@ -1,3 +1,4 @@
+#include "loadoutDefs.hpp"
 #include "modloader.c"
 #include "kernelBaseHooks.c"
 #include "mempatch.c"

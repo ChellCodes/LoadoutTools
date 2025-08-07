@@ -7,6 +7,7 @@
 #include <libloaderapi.h>
 #include <stdio.h>
 #include <winuser.h>
+#include "loadoutDefs.hpp"
 #pragma comment(lib, "d3d11.lib")
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
@@ -36,10 +37,10 @@ ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 bool init = false;
 bool showMenu = true;
 bool showDemoMenu = false;
-HINSTANCE baseAddr = 0;
+char* baseAddr = nullptr;
 HRESULT __stdcall myPresent(IDXGISwapChain *thisptr, UINT sync, UINT flags) {
   if (!init) {
-    baseAddr = GetModuleHandle(NULL);
+    baseAddr = (char*)GetModuleHandle(NULL);
     DXGI_SWAP_CHAIN_DESC sd;
     thisptr->GetDesc(&sd);
     thisptr->GetDevice(__uuidof(ID3D11Device), (void **)&device);
@@ -119,20 +120,22 @@ HRESULT __stdcall myPresent(IDXGISwapChain *thisptr, UINT sync, UINT flags) {
       ImGui::Unindent();
       }
     }
-    uintptr_t* base = (uintptr_t *)((char*)baseAddr+0x00B54270);
-    uintptr_t customCharData = *((uintptr_t*)((*base)+0x8));
-    if (customCharData){
-      for (uint8_t i = 0; i<3; i++) {
-        // uintptr_t* CharPtr = (uintptr_t*)((*(uintptr_t*)(customCharData+(i*0x4)))+0x105);
-        uintptr_t CharPtr = *(uintptr_t*)(customCharData+(i*0x4));
-        uintptr_t* CharName = (uintptr_t*)(CharPtr+0x5);
-        uintptr_t CharSelect = *(uintptr_t*)(CharPtr+0x105);
-        ImGui::Text("%s: %u",
-                (char*)CharName,
-                (uint8_t)CharSelect);
+
+    uintptr_t* base = (uintptr_t *)((char*)baseAddr+CHARACTERBASE);
+    if (*base){
+      uintptr_t customCharData = *((uintptr_t*)((*base)+0x8));
+      // uint32_t TrueDataSize = *((uintptr_t*)((*base)+0xc));
+      uint32_t numOfSlots = *((uintptr_t*)((*base)+0x10));
+      if (customCharData){
+        for (uint8_t i = 0; i<numOfSlots; i++) {
+          CharSlot* slot = (((CharSlot**)customCharData)[i]);
+          ImGui::Text("%s: %u",
+                  slot->Name,
+                  slot->SelectedChar);
+        }
+      }else {
+        ImGui::Text("Custom Characters Not Loaded");
       }
-    }else {
-      ImGui::Text("Custom Characters Not Loaded");
     }
 
     ImGui::End();
