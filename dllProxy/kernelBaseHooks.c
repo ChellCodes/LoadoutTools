@@ -1,5 +1,7 @@
 #include <Windows.h>
 #include <fileapi.h>
+#include <minwinbase.h>
+#include <minwindef.h>
 #include <stdio.h>
 
 typedef HANDLE(__stdcall *tCreateFileA)(
@@ -52,6 +54,9 @@ HANDLE __stdcall myCreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess,
   if (strstr(lpFileName, ".ini") != NULL) {
     printf("Config File Loading: %s\n", lpFileName);
   }
+  if (strstr(lpFileName, ".ARC") != NULL) {
+    printf("%s %p\n", lpFileName, a);
+  }
   return a;
 }
 
@@ -71,3 +76,18 @@ BOOL __stdcall myWriteFile(HANDLE hFile, LPCVOID lpBuffer,
   return gwWriteFile(hFile, lpBuffer, nNumberOfBytesToWrite,
                      lpNumberOfBytesWritten, lpOverlapped);
 }
+
+typedef BOOL(__stdcall *tReadFile)(HANDLE hFile, LPCVOID lpBuffer,
+                                    DWORD nNumberOfBytesToWrite,
+                                    LPDWORD lpNumberOfBytesWritten,
+                                    LPOVERLAPPED lpOverlapped);
+
+tReadFile gwReadFile;
+BOOL __stdcall myReadFile(HANDLE hFile, LPCVOID lpBuffer,
+                           DWORD nNumberOfBytesToRead,
+                           LPDWORD lpNumberOfBytesRead,
+                           LPOVERLAPPED lpOverlapped) {
+
+  return gwReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+}
+

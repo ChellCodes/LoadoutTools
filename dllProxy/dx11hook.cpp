@@ -2,7 +2,9 @@
 #include "imgui/backends/imgui_impl_win32.h"
 #include "imgui/imgui.h"
 #include "mempatch.h"
+#include <cstdint>
 #include <d3d11.h>
+#include <libloaderapi.h>
 #include <stdio.h>
 #include <winuser.h>
 #pragma comment(lib, "d3d11.lib")
@@ -25,7 +27,7 @@ LRESULT WINAPI myWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 typedef HRESULT(__stdcall *tPresent)(IDXGISwapChain *, UINT, UINT);
 tPresent gwPresent;
 
-ID3D11Device *device;
+ID3D11Device *device = nullptr;
 IDXGISwapChain *swap_chain;
 ID3D11DeviceContext *context;
 ID3D11RenderTargetView *target = nullptr;
@@ -34,8 +36,10 @@ ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 bool init = false;
 bool showMenu = true;
 bool showDemoMenu = false;
+HINSTANCE baseAddr = 0;
 HRESULT __stdcall myPresent(IDXGISwapChain *thisptr, UINT sync, UINT flags) {
   if (!init) {
+    baseAddr = GetModuleHandle(NULL);
     DXGI_SWAP_CHAIN_DESC sd;
     thisptr->GetDesc(&sd);
     thisptr->GetDevice(__uuidof(ID3D11Device), (void **)&device);
@@ -114,6 +118,21 @@ HRESULT __stdcall myPresent(IDXGISwapChain *thisptr, UINT sync, UINT flags) {
         }
       ImGui::Unindent();
       }
+    }
+    uintptr_t* base = (uintptr_t *)((char*)baseAddr+0x00B54270);
+    uintptr_t customCharData = *((uintptr_t*)((*base)+0x8));
+    if (customCharData){
+      for (uint8_t i = 0; i<3; i++) {
+        // uintptr_t* CharPtr = (uintptr_t*)((*(uintptr_t*)(customCharData+(i*0x4)))+0x105);
+        uintptr_t CharPtr = *(uintptr_t*)(customCharData+(i*0x4));
+        uintptr_t* CharName = (uintptr_t*)(CharPtr+0x5);
+        uintptr_t CharSelect = *(uintptr_t*)(CharPtr+0x105);
+        ImGui::Text("%s: %u",
+                (char*)CharName,
+                (uint8_t)CharSelect);
+      }
+    }else {
+      ImGui::Text("Custom Characters Not Loaded");
     }
 
     ImGui::End();

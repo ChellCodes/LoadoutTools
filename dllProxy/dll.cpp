@@ -1,12 +1,11 @@
-#include <Windows.h>
-#include <stdio.h>
 #include "modloader.c"
 #include "kernelBaseHooks.c"
 #include "mempatch.c"
+#include "threadSus.cpp"
 
 #include "dx11hook.cpp"
 
-
+// 007AD330 log address
 int attachGameLog = FALSE;
 void myCode() {
 	AllocConsole();
@@ -20,6 +19,9 @@ void myCode() {
 
 	tCreateFileA orgCreateFileA = (tCreateFileA)GetProcAddress(kernelBase, "CreateFileA");
 	gwCreateFileA = (tCreateFileA)TrampolineHook((BYTE*)orgCreateFileA, (BYTE*)myCreateFileA, 5);
+
+	tReadFile orgReadFile = (tReadFile)GetProcAddress(kernelBase, "ReadFile");
+	gwReadFile = (tReadFile)TrampolineHook((BYTE*)orgReadFile, (BYTE*)myReadFile, 5);
 
 	if (attachGameLog){
 		tWriteFile orgWriteFile = (tWriteFile)GetProcAddress(kernelBase, "WriteFile");
